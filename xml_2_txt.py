@@ -32,13 +32,13 @@ def parse_rec(filename):
 
     return objects
 
-txt_file = open('voc2012trian.txt','w')
+txt_file = open('voc2012train.txt','w')
 # test_file = open('voc07testimg.txt','r')
 # lines = test_file.readlines()
 # lines = [x[:-1] for x in lines]
 # print(lines)
 
-Annotations = '/home/ubuntu/voc2012/VOCtrainval_11-May-2012/VOCdevkit/VOC2012/Annotations/'
+Annotations = './tiny_database/train_Annotations/'
 xml_files = os.listdir(Annotations)
 xml_files.sort()
 #print(xml_files[0])

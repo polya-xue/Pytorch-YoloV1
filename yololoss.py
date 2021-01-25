@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
-
+import numpy as np
 class Loss(nn.Module):
     def __init__(self, lambda_coord, lambda_noobj):
         super(Loss, self).__init__()
@@ -19,8 +19,10 @@ class Loss(nn.Module):
             计算网格是否包含有目标，应从实际标签张量的box属性第5各参数来判定，该值表征某网格某box的预测概率为1
         逻辑mask应与原tensor尺寸相同，只包含0-1两个值，表示原tensor对应位置是否满足条件。
         """
+
         # 具有目标的标签逻辑索引
         coo_mask = target_tensor[:, :, :, 4] > 0
+        # print("size", target_tensor.shape)
         coo_mask = coo_mask.unsqueeze(-1).expand_as(target_tensor)
         # print("coomask", coo_mask)
         # 没有目标的标签逻辑索引
@@ -38,7 +40,7 @@ class Loss(nn.Module):
             # 提取真实box属性
             # print("size", target_tensor[i][coo_mask[i]].shape)
             coo_targ = target_tensor[i][coo_mask[i]].view(-1, 30)
-            box_targ_s = coo_targ[:, :5].contiguous().view(-1, 5)  # 单独提取出目标数组
+            box_targ_mask = coo_targ[:, :5].contiguous().view(-1, 5)  # 单独提取出目标数组
 
             # 提取预测box属性
             box_targ = target_tensor[i, :, :, :5].view(-1, 5)
@@ -47,7 +49,7 @@ class Loss(nn.Module):
             if box_targ.size()[0] != 0:
                 # print("box_pred", box_pred)
                 # print("mask",  coo_mask[i, :, :, 1])
-                iou = self.cal_iou(box_targ_s, box_pred, coo_mask[i, :, :, 1])  # box_targ  大小为 实际框个数*5，box_pred为 预测框大小49*5，coomask为7*7的真假值
+                iou = self.cal_iou(box_targ_mask, box_pred, coo_mask[i, :, :, 1])  # box_targ  大小为 实际框个数*5，box_pred为 预测框大小49*5，coomask为7*7的真假值
                 # print("iou", iou)
                 #iou tensor([[0.3177],
                     # [0.1949],
@@ -77,7 +79,7 @@ class Loss(nn.Module):
 
                 # 包含目标的box confidence误差
                 con_obj_c = box_pred[max_sort][:, 4] * max_iou
-                con_obj_loss += F.mse_loss(con_obj_c, torch.ones_like(con_obj_c), reduction='sum')
+                #con_obj_loss += F.mse_loss(con_obj_c, torch.ones_like(con_obj_c), reduction='sum')
 
                 # 不含目标的box confidence误差
                 no_sort = torch.ones(box_pred.size()[0]).byte()
@@ -86,21 +88,49 @@ class Loss(nn.Module):
                 nocon_obj_c = box_pred[no_sort][:, 4]
                 nocon_obj_loss += F.mse_loss(nocon_obj_c, torch.zeros_like(nocon_obj_c), reduction='sum')
 
+        # confidence计算修改为有物体的target和pred中预测值部分直接做计算
+        confidence_pre = pred_tensor[coo_mask].view(-1, 30)[:, 4]
+        confidence_tar = target_tensor[coo_mask].view(-1, 30)[:, 4]
+        # 检查target值是否都为1
+        # for ii in confidence_tar:
+        #     if ii - 1 != 0:
+        #         print(ii)
+        #print("shape", confidence_pre.shape)
+        con_obj_loss = F.mse_loss(confidence_pre, confidence_tar, reduction='sum')
+
         # 计算类别误差
         """
             由于类别是通过网格来确定的，每一个网格无论有几个box，一个所属类概率。
             在计算类别误差时，只对目标中心落在该其中的网格进行计算。
         """
+
         # coo_mask 表示在整个张量中，包含目标的网格点索引，所以可以不对每一个bitch进行分别计算，直接整体求和
         con_pre_class = pred_tensor[coo_mask].view(-1, 30)[:, 10:]
         con_tar_class = target_tensor[coo_mask].view(-1, 30)[:, 10:]
+
+        #print("shape", con_tar_class.shape)
         con_class_loss = F.mse_loss(con_pre_class, con_tar_class, reduction='sum')
         
-        import numpy as np
         # 总损失函数求和
         loss_total = (self.lambda_coord * (xy_loss + wh_loss) + con_obj_loss
                       + self.lambda_noobj  * nocon_obj_loss + con_class_loss)/pred_tensor.size()[0]
+
+        # print("xy_loss: ", xy_loss, "wh_loss: ", wh_loss, "con_loss: ", con_obj_loss, 
+        # "noncon_loss: ", nocon_obj_loss, "con_class_loss: ", con_class_loss)
         return loss_total
+
+    # 交叉熵损失函数
+    def CrossEntropyLoss(self, input, target):
+        # 做softmax运算，每一行加在一起的结果都是1
+        softmax_func=nn.Softmax(dim=1)
+        soft_output=softmax_func(input)
+        #在softmax的基础上取log
+        log_output=torch.log(soft_output)
+        print("logoutput", log_output)
+        #pytorch中关于NLLLoss的默认参数配置为：reducetion=True、size_average=True
+        nllloss_func=nn.NLLLoss()
+        nlloss_output=nllloss_func(log_output, target)
+        return nlloss_output
 
     def cal_iou(self, box_targ, box_pred, mask):
         # 计算box数量

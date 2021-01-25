@@ -1,0 +1,57 @@
+第一次运行过程：
+小部分图片保存在tiny_database文件夹，先运行xml_2_txt，生成保存标注数据的txt文件，然后运行train.py
+
+bc = 2  lr = 0.001 结果nan
+
+bc = 2  lr = 0.0001 结果 loss逐渐增大然后 nan
+
+bc = 2  lr = 0.00001
+3个epcho后，loss突然出现100以上，又nan了，不是lr的原因
+
+###########################################################
+1月22号
+bc = 2  lr = 0.001
+修改图形变化：
+            img,boxes,labels = self.randomShift(img,boxes,labels)  # 平移操作
+            img,boxes,labels = self.randomCrop(img,boxes,labels)  # 图像裁剪
+注释掉
+结果nan
+修改回去了
+
+##########################################################
+1月25
+修改了各个loss的权重，loss降低到30一下，偶尔爆百
+修改Lr=0.0001, loss正常，偶尔爆百，还是Nan
+Epoch [1/5], Iter [97/640] Loss: 150.8794, average_loss: 18.7451
+Epoch [1/5], Iter [98/640] Loss: 19.6537, average_loss: 18.7543
+Epoch [1/5], Iter [99/640] Loss: 8.1981, average_loss: 18.6477
+Epoch [1/5], Iter [100/640] Loss: 11.8601, average_loss: 18.5798
+Epoch [1/5], Iter [101/640] Loss: 9.9650, average_loss: 18.4945
+Epoch [1/5], Iter [102/640] Loss: 19.5666, average_loss: 18.5050
+Epoch [1/5], Iter [103/640] Loss: 6.0343, average_loss: 18.3840
+Epoch [1/5], Iter [104/640] Loss: 18.1680, average_loss: 18.3819
+Epoch [1/5], Iter [105/640] Loss: 6.6279, average_loss: 18.2699
+Epoch [1/5], Iter [106/640] Loss: 7.1711, average_loss: 18.1652
+Epoch [1/5], Iter [107/640] Loss: 18.7647, average_loss: 18.1708
+Epoch [1/5], Iter [108/640] Loss: 4.5077, average_loss: 18.0443
+Epoch [1/5], Iter [109/640] Loss: 6.6255, average_loss: 17.9396
+Epoch [1/5], Iter [110/640] Loss: 11.2961, average_loss: 17.8792
+Epoch [1/5], Iter [111/640] Loss: 29.2524, average_loss: 17.9816
+Epoch [1/5], Iter [112/640] Loss: 3.6233, average_loss: 17.8534
+Epoch [1/5], Iter [113/640] Loss: 6.9122, average_loss: 17.7566
+Epoch [1/5], Iter [114/640] Loss: 10.7799, average_loss: 17.6954
+Epoch [1/5], Iter [115/640] Loss: 14.6885, average_loss: 17.6693
+Epoch [1/5], Iter [116/640] Loss: 8.0760, average_loss: 17.5866
+Epoch [1/5], Iter [117/640] Loss: 5.8906, average_loss: 17.4866
+Epoch [1/5], Iter [118/640] Loss: 4.9380, average_loss: 17.3803
+
+检查发现是con_obj_loss会nan, 有物体的格子的置信度
+con_loss tensor(nan, device='cuda:0', grad_fn=<AddBackward0>)
+
+去掉了net中的dropout层，但是con_loss依然会nan
+
+修改了con_loss的计算方式，不再nan
+
+
+conclusion:
+和lr, dropout没有关系，主要就是原confidence计算会出现nan

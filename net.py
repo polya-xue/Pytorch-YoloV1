@@ -4,7 +4,8 @@ import torch.utils.model_zoo as model_zoo
 import math
 import torch
 import torch.nn.functional as F
-
+from torchvision import models
+from torch.autograd import Variable
 
 __all__ = [
     'VGG', 'vgg11', 'vgg11_bn', 'vgg13', 'vgg13_bn', 'vgg16', 'vgg16_bn',
@@ -218,9 +219,17 @@ def vgg19_bn(pretrained=False, **kwargs):
     return model
 
 def test():
-    import torch
-    from torch.autograd import Variable
-    model = vgg16()
+
+    model = vgg16_bn()
+    vgg = models.vgg16_bn(pretrained=True)
+    new_state_dict = vgg.state_dict()
+    dd = model.state_dict()
+    for k in new_state_dict.keys():
+        print(k)
+        if k in dd.keys() and k.startswith('features'):
+            # print('yes')
+            dd[k] = new_state_dict[k]
+    model.load_state_dict(dd)
     # model.classifier = nn.Sequential(
     #         nn.Linear(512 * 7 * 7, 4096),
     #         nn.ReLU(True),
@@ -237,5 +246,8 @@ def test():
     output = model(img)
     print(output.size())
 
+
 if __name__ == '__main__':
     test()
+    # vgg = models.vgg16(pretrained=False)
+    # print(vgg)

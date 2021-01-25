@@ -82,6 +82,7 @@ class yoloDataset(data.Dataset):
             img = self.RandomSaturation(img)
             img,boxes,labels = self.randomShift(img,boxes,labels)  # 平移操作
             img,boxes,labels = self.randomCrop(img,boxes,labels)  # 图像裁剪
+
             # print("boxes", boxes)  # 也还没做归一化
         # #debug
         # box_show = boxes.numpy().reshape(-1)

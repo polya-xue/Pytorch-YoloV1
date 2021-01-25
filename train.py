@@ -9,7 +9,6 @@ from torch.autograd import Variable
 
 from net import vgg16, vgg16_bn
 from resnet_yolo import resnet50, resnet18
-from yoloLoss import yoloLoss
 from dataset import yoloDataset
 from yololoss import Loss
 
@@ -28,7 +27,7 @@ use_gpu = torch.cuda.is_available()
 # train_loader = DataLoader(train_dataset,batch_size=1,shuffle=True,num_workers=0)
 
 learning_rate = 0.001
-batch_size = 24
+batch_size = 1
 use_resnet = False
 if use_resnet:
     net = resnet50()
@@ -75,11 +74,12 @@ for key,value in params_dict.items():
         params += [{'params':[value],'lr':learning_rate*1}]
     else:
         params += [{'params':[value],'lr':learning_rate}]
+
 optimizer = torch.optim.SGD(params, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 # optimizer = torch.optim.Adam(net.parameters(),lr=learning_rate,weight_decay=1e-4)
 
 # file_root = '/Datas/yc/VOC_0712/VOCdevkit/VOC2012/JPEGImages/'
-file_root = '/home/ubuntu/voc2012/VOCtrainval_11-May-2012/VOCdevkit/VOC2012/JPEGImages/'
+file_root = './tiny_database/train_images/'
 # file_root = '/home/ubuntu/voc2012/VOCtrainval_11-May-2012/VOCdevkit/voc2012_tiny_test/images/'
 
 # train_dataset = yoloDataset(root=file_root,list_file=['voc2012_tiny.txt'],train=True,transform = [transforms.ToTensor()] ) 
@@ -92,13 +92,12 @@ print('the batch_size is %d' % (batch_size))
 # logfile = open('log.txt', 'w')
 
 num_iter = 0
-num_epochs = 50
+num_epochs = 10
 #vis = Visualizer(env='xiong')
 # best_test_loss = np.inf
 
-# criterion = yoloLoss(7,2,5,0.5)  # S B coord noobj
 
-criterion = Loss(5, 0.5)
+criterion = Loss(5, 0.5)  # lambda_coord, lambda_noobj
 # f = open('result.txt','a',encoding = 'utf-8')
 
 for epoch in range(num_epochs):
@@ -142,13 +141,13 @@ for epoch in range(num_epochs):
 
         # print('Epoch [%d/%d], Iter [%d/%d] Loss: %.4f, average_loss: %.4f'
         #       % (epoch + 1, num_epochs, i + 1, len(train_loader), loss, total_loss / (i + 1)))
-        if (i+1) % 100 == 0:
+        if (i+1) % 10 == 0:
             print ('Epoch [%d/%d], Iter [%d/%d] Loss: %.4f, average_loss: %.4f'
             %(epoch+1, num_epochs, i+1, len(train_loader), loss, total_loss / (i+1)))
         #     num_iter += 1
         #     # vis.plot_train_val(loss_train=total_loss/(i+1))
 
-    print('Epoch [%d/%d],  Loss: %.4f, average_loss: %.4f'
+    print('all: Epoch [%d/%d],  Loss: %.4f, average_loss: %.4f'
               % (epoch + 1, num_epochs, loss, total_loss / len(train_loader)))
     # f.write(str(epoch+1)+" " + str(total_loss / len(train_loader)) + "\n")
 
